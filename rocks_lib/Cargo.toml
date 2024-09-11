@@ -1,0 +1,20 @@
+[package]
+name = "rocks_lib"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+uuid = { version = "1.2", features = ["v4"] }
+tracing = "0.1"
+tokio = { version = "1.39", features = ["rt-multi-thread", "net", "signal", "sync", "io-util", "fs"] }
+tokio-stream = { version = "0.1.15", features=["net"] }
+toml = "0.8.19"
+serde = { version = "1.0", features = ["derive"] }
+serde_valid = "0.25.0"
+regex = "1.10"
+anyhow = "1.0"
+thiserror = "1.0"
+trait-variant = "0.1.2"
+hex-display = "0.3.0"
+derive_more = { version = "1.0", features = ["display", "from"] }
+pin-project = "1.1"

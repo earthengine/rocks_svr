@@ -1,0 +1,19 @@
+# Ignore the target directory
+target/
+
+# Ignore temporary files and directories
+*.rs.bk
+*.swp
+*.swo
+*.tmp
+
+# Ignore version control files and directories
+.git/
+.gitignore
+
+# Ignore Cargo.lock if you do not want to lock dependencies
+# Uncomment the next line if you want to ignore Cargo.lock
+# Cargo.lock
+
+# Ignore build scripts output
+build/

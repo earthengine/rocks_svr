@@ -1,0 +1,23 @@
+# Stage 1: Build the binary
+FROM rust:latest as builder
+
+# Create a new directory for the project
+WORKDIR /usr/src/rocks_works
+
+# Copy the source code into the container
+COPY . .
+
+# Build the binary
+RUN cargo build --release
+
+# Stage 2: Create a smaller image for running the binary
+FROM debian:buster-slim
+
+# Copy the binary from the builder stage
+COPY --from=builder /usr/src/rocks_works/target/release/rocks_svr /usr/local/bin/rocks_svr
+
+# Expose the port the application runs on
+EXPOSE 34434
+
+# Set the entry point to run the binary
+ENTRYPOINT ["rocks_svr"]
