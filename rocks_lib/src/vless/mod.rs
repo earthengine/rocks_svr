@@ -17,7 +17,7 @@ use tracing::info;
 use uuid::Uuid;
 
 use crate::{
-    buffer_parser::Protocol, tcp::proxy, BufferParseResult, BufferParser, UnsendDataWrite,
+    buffer_parser::Protocol, tcp::proxy, write_ext::WriteExt, BufferParseResult, BufferParser,
 };
 
 #[derive(Debug, Error)]
@@ -82,7 +82,17 @@ impl Protocol for VlessProtocol {
         let (out_rd, mut out_wr) = tokio::io::split(stream);
         out_wr.write(&buffer[len..offset]).await?;
 
-        let in_wr = UnsendDataWrite::new(in_wr, Some(&[0; 2]));
+        let mut first = true;
+        let in_wr = in_wr.with(|msg: &[u8]| {
+            if !first {
+                return msg.to_vec();
+            }
+
+            let mut msg_to_send = vec![0u8; 2];
+            msg_to_send.extend_from_slice(&msg);
+            first = false;
+            msg_to_send
+        });
 
         proxy(in_rd, in_wr, out_rd, out_wr).await?;
         Ok(())

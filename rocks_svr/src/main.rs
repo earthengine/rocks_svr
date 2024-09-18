@@ -1,11 +1,12 @@
-use rocks_lib::run_vless_over_tcp;
+use rocks_lib::{run_vless_over_tcp, run_vless_over_tungstenite_ws};
 use tokio::select;
 use tracing::info;
 use warp::Filter;
 
 async fn wrap() -> Result<(), Box<dyn std::error::Error>> {
-    let addr = warp::any().map(|| "Hello, World!");
-    warp::serve(addr).run(([127, 0, 0, 1], 8888)).await;
+    let root = warp::path::end().and(warp::fs::dir("public"));
+
+    warp::serve(root).run(([127, 0, 0, 1], 8888)).await;
     Ok(())
 }
 
@@ -15,6 +16,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     select!(
         r = run_vless_over_tcp() => {
+            info!("test_vless finished: {:?}", r);
+        },
+        r = run_vless_over_tungstenite_ws() => {
             info!("test_vless finished: {:?}", r);
         },
         r = wrap() => {

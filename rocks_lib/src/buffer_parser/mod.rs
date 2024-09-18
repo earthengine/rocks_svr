@@ -10,6 +10,7 @@
 use std::net::SocketAddr;
 
 use anyhow::Error;
+use futures::{Sink, Stream};
 use tokio::io::{AsyncRead, AsyncWrite};
 
 #[derive(Debug)]
@@ -88,70 +89,13 @@ pub(crate) trait LocalProtocol {
     ) -> Result<(), Error>;
 }
 
-#[pin_project::pin_project]
-pub struct UnsendDataWrite<W> {
-    pub unsent: Option<Vec<u8>>,
-    orig_size: usize,
-    #[pin]
-    pub writer: W,
-}
-
-impl<W> UnsendDataWrite<W> {
-    pub fn new(writer: W, unsent: Option<&[u8]>) -> Self {
-        Self {
-            unsent: unsent.map(|v| v.to_vec()),
-            orig_size: unsent.map(|v| v.len()).unwrap_or(0),
-            writer,
-        }
-    }
-}
-
-impl<W> AsyncWrite for UnsendDataWrite<W>
-where
-    W: AsyncWrite,
-{
-    fn poll_write(
-        self: std::pin::Pin<&mut Self>,
-        cx: &mut std::task::Context<'_>,
-        buf: &[u8],
-    ) -> std::task::Poll<Result<usize, std::io::Error>> {
-        let projected = self.project();
-
-        if let Some(unsent) = projected.unsent.as_mut() {
-            unsent.extend_from_slice(buf);
-            let n = projected.writer.poll_write(cx, &unsent);
-            match n {
-                std::task::Poll::Ready(Ok(n)) => {
-                    if n < unsent.len() {
-                        unsent.drain(..n);
-                    } else {
-                        *projected.unsent = None;
-                    }
-                    if n < *projected.orig_size {
-                        *projected.orig_size -= n;
-                        std::task::Poll::Pending
-                    } else {
-                        std::task::Poll::Ready(Ok(n - *projected.orig_size))
-                    }
-                }
-                x => x,
-            }
-        } else {
-            projected.writer.poll_write(cx, buf)
-        }
-    }
-
-    fn poll_flush(
-        self: std::pin::Pin<&mut Self>,
-        cx: &mut std::task::Context<'_>,
-    ) -> std::task::Poll<Result<(), std::io::Error>> {
-        self.project().writer.poll_flush(cx)
-    }
-
-    fn poll_shutdown(
-        self: std::pin::Pin<&mut Self>,
-        cx: &mut std::task::Context<'_>,
-    ) -> std::task::Poll<Result<(), std::io::Error>> {
-        self.project().writer.poll_shutdown(cx)
-    }
+#[trait_variant::make(WsProtocol: Send + Sync)]
+#[allow(dead_code)]
+pub(crate) trait WsLocalProtocol {
+    async fn handle(
+        &self,
+        data_sink: impl Sink<Vec<u8>> + Send + Sync + Unpin,
+        data_stream: impl Stream<Item = Vec<u8>> + Send + Sync + Unpin,
+        remote_addr: SocketAddr,
+    ) -> Result<(), Error>;
 }
